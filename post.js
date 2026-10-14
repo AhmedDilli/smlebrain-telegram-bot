@@ -239,7 +239,8 @@ async function main() {
 
 if (require.main === module) {
   main().catch((error) => {
-    console.error(error.message);
+    // '::error::' makes GitHub show the message on the run's summary page.
+    console.error(`::error::${String(error.message).replace(/\r?\n/g, ' ')}`);
     process.exit(1);
   });
 }
