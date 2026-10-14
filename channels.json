@@ -1,5 +1,9 @@
 {
-  "window": { "from": "10:00", "to": "17:00", "timeZone": "Asia/Riyadh" },
+  "window": {
+    "from": "10:00",
+    "to": "17:00",
+    "timeZone": "Asia/Riyadh"
+  },
   "channels": {
     "smle": {
       "chatEnv": "TELEGRAM_CHANNEL",
@@ -25,6 +29,20 @@
       "chat": "@peds_part1",
       "source": "residency",
       "bank": "peds_p1",
+      "postsPerDay": 5,
+      "questionsPerPost": 1
+    },
+    "gs_part1": {
+      "chat": "@GS_part1",
+      "source": "residency",
+      "bank": "gs_p1",
+      "postsPerDay": 5,
+      "questionsPerPost": 1
+    },
+    "er_part1": {
+      "chat": "@ER_part1",
+      "source": "residency",
+      "bank": "er_p1",
       "postsPerDay": 5,
       "questionsPerPost": 1
     }

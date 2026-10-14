@@ -13,7 +13,7 @@ on:
       channel:
         description: Channel to post to (a name from channels.json)
         type: choice
-        options: [smle, fm_part1, im_part1, peds_part1]
+        options: [smle, fm_part1, im_part1, peds_part1, gs_part1, er_part1]
         default: fm_part1
       count:
         description: How many posts to send now
