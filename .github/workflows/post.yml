@@ -2,10 +2,16 @@ name: Post SMLE questions
 
 on:
   schedule:
-    # 14:45 UTC = 5:45 PM Riyadh, every day. GitHub can start scheduled runs
-    # a few minutes late. Change the time here: https://crontab.guru
-    - cron: '45 14 * * *'
-  # Adds a "Run workflow" button on the Actions tab for posting on demand.
+    # The bot wakes at all five times (UTC; Riyadh is UTC+3). slot.js picks
+    # one of them at random each day, and only that run posts. GitHub can
+    # start scheduled runs a few minutes late.
+    # If you change these, change SLOTS in slot.js to match.
+    - cron: '0 7 * * *'   # 10:00 AM Riyadh
+    - cron: '0 10 * * *'  #  1:00 PM
+    - cron: '30 12 * * *' #  3:30 PM
+    - cron: '0 13 * * *'  #  4:00 PM
+    - cron: '15 14 * * *' #  5:15 PM
+  # Adds a "Run workflow" button on the Actions tab. It always posts.
   workflow_dispatch:
 
 permissions:
@@ -21,31 +27,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Is this today's time?
+        id: slot
+        run: node slot.js
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+
       - uses: actions/setup-node@v4
+        if: steps.slot.outputs.post == 'true'
         with:
           node-version: 20
           cache: npm
 
-      - run: npm ci --no-audit --no-fund
+      - if: steps.slot.outputs.post == 'true'
+        run: npm ci --no-audit --no-fund
 
       - name: Post questions
+        if: steps.slot.outputs.post == 'true'
         run: node post.js
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          QUESTIONS_PER_POST: '3'
+          QUESTIONS_PER_POST: '5'
           MONTH: '' # empty = the current month; set e.g. 'Sep-26' to force one
 
       # Runs even if posting failed halfway, so questions that did go out are
       # never posted again.
       - name: Remember what was posted
-        if: always()
+        if: always() && steps.slot.outputs.post == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add posted.json
           if ! git diff --cached --quiet; then
             git commit -m "Record posted questions"
+            git pull --rebase
             git push
           fi
