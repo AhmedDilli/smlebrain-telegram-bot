@@ -1,45 +1,74 @@
-# SMLE Brain Telegram bot
+# Question bot for Telegram
 
-Posts 5 SMLE questions from one month to a Telegram channel once a day, at a random time between 10 AM and 5 PM, as plain text: just the case, then options A–D. No month label, no answer. It runs on GitHub Actions, so there's no server to keep alive.
+One bot (@Smlebrainbot) posts questions to several Telegram channels every day. It runs on GitHub Actions, so there's no server to keep alive.
 
-Each day it posts 5 questions from the current month (October 2026 in October, November 2026 from 1 November, by Riyadh time) that haven't been posted before. If the current month isn't uploaded yet, or every question in it has already been posted, it uses the newest month that still has questions left. Image questions are skipped. The IDs it has posted are saved in `posted.json`, so no question goes out twice.
-
-## Setup (about 15 minutes)
-
-1. **Create the bot.** In Telegram, open @BotFather, send `/newbot` and follow the prompts. Copy the token it gives you.
-2. **Let it post.** Open your channel → Administrators → Add admin → search for the bot. Give it "Post messages".
-3. **Get a Firebase key.** Firebase Console → Project settings → Service accounts → Generate new private key. A `.json` file downloads. Never commit this file or share it.
-4. **The code is in the repo** `AhmedDilli/smlebrain-telegram-bot`, with the workflow already at `.github/workflows/post.yml`.
-5. **Add three secrets.** In the repo, go to Settings → Secrets and variables → Actions → New repository secret:
-   - `TELEGRAM_BOT_TOKEN`: the token from step 1
-   - `TELEGRAM_CHANNEL`: `@yourchannelname`, or the numeric `-100…` id for a private channel
-   - `FIREBASE_SERVICE_ACCOUNT`: the whole contents of the `.json` file from step 3
-6. **Test it.** Actions tab → "Post SMLE questions" → Run workflow. Five messages should appear in the channel.
-
-After that it posts on its own once a day, at a random minute between 10:00 AM and 5:00 PM Riyadh time. The bot wakes every 30 minutes; the run just before the picked time waits until that minute and posts, and the others stop after a few seconds (their log says "Skipping"). `last-post.txt` records the day's post so it never posts twice. If GitHub starts a run late, the post goes out late by the same amount. Runs started by hand always post and don't count as the day's post.
-
-## Changing it
-
-The settings are in `.github/workflows/post.yml`. The 10 AM to 5 PM range is `FIRST` and `LAST` in `slot.js`; if you widen it, extend the `cron` lines so a run comes up every 30 minutes across the new range.
-
-| Setting | Default | What it does |
+| Channel | Questions from | Each day |
 |---|---|---|
-| `QUESTIONS_PER_POST` | `5` | How many questions per day |
-| `MONTH` | empty | Empty means the current month. Set e.g. `Sep-26` to post from a specific month instead. |
+| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | 5 questions together, at one random time |
+| @fm_part1 | Residency Brain `fm_p1` | 5 questions, each at its own random time |
+| @im_part1 | Residency Brain `im_p1` | 5 questions, each at its own random time |
+| @peds_part1 | Residency Brain `peds_p1` | 5 questions, each at its own random time |
+
+All times are random between 10:00 AM and 5:00 PM Riyadh time, different every day. A channel's 5 times are spread across the day, at least 20 minutes apart. No question is ever posted twice to the same channel.
+
+## What a post looks like
+
+**SMLE:** plain text, just the case and options A–D. No month, no answer. If the current month isn't uploaded yet or is used up, the bot uses the previous month.
+
+**Part 1 channels:** a Telegram quiz. Members tap an answer, and Telegram shows right or wrong.
+
+- If the header and the case fit in a quiz (300 characters), the whole thing is one quiz: "Part 1 year 2024 question ⭐", the case, then the options.
+- If the case is longer, the header and case go out as a message, with the quiz of options right underneath.
+- After the quiz comes a "💡 Explanation" message with the answer and full explanation, hidden behind a spoiler that members tap to reveal.
+
+A question asked in several years is labelled with all of them, for example "Part 1 year 2023 & 2024 question ⭐". Questions with images, a disputed answer or no recalled answer are skipped, because a quiz needs one sure correct answer.
+
+## Secrets
+
+Repo → Settings → Secrets and variables → Actions:
+
+| Secret | What it is |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | The bot's token from @BotFather |
+| `TELEGRAM_CHANNEL` | The SMLE channel's @username |
+| `FIREBASE_SERVICE_ACCOUNT` | Key file contents for the **smlebrain** Firebase project |
+| `RESIDENCY_FIREBASE_SERVICE_ACCOUNT` | Key file contents for the **residency-brain** Firebase project |
+
+The bot needs to be an admin with "Post messages" in every channel.
+
+## Adding a channel
+
+Add an entry to `channels.json`, and add the same name to the `channel` options in `.github/workflows/post.yml`:
+
+```json
+"derm_part1": {
+  "chat": "@derm_part1",
+  "source": "residency",
+  "bank": "derm_p1",
+  "postsPerDay": 5,
+  "questionsPerPost": 1
+}
+```
+
+`bank` is the bank id in Residency Brain (`derm_p1`, `gs_p1`, `er_p1`, …). `postsPerDay` × `questionsPerPost` is the number of questions a day. The 10 AM–5 PM window is `window` at the top of the file.
+
+## Posting by hand
+
+Actions tab → "Post questions" → Run workflow. Pick a channel and how many posts to send. These go out right away, use up questions like any other post, and don't replace the day's scheduled posts.
+
+## How it works
+
+- GitHub can only start runs on a fixed schedule, so the workflow wakes every 30 minutes from 9:55 AM to 4:55 PM. Each run sends the posts due before the next run, waiting until each one's exact minute. If GitHub starts a run late, that post goes out late by the same amount; a post more than an hour overdue is skipped for the day rather than sent in a burst.
+- `state/<channel>.json` records each channel's posted question ids and which of today's posts are done. The workflow commits it after every run.
+- SMLE questions come from Firestore `bankQuestions`, queried by `Month`. Residency Brain banks are read from the `banks` catalog, then downloaded from Storage.
+- If one channel fails, the others still post, and the failed post is retried on the next run. Errors appear on the run's page on the Actions tab.
+- The bot only reads from Firebase. It never writes to it.
 
 ## Preview without posting
 
 ```
 npm install
-FIREBASE_SERVICE_ACCOUNT="$(cat path/to/key.json)" npm run preview
+DRY_RUN=true MANUAL_CHANNEL=fm_part1 RESIDENCY_FIREBASE_SERVICE_ACCOUNT="$(cat residency-key.json)" node run.js
 ```
 
-This prints the messages it would send. It doesn't post anything and doesn't change `posted.json`.
-
-## Notes
-
-- GitHub Actions is free for public repos; a private repo gets 2,000 minutes a month on the Free plan. The 14 short wake-ups plus the wait before posting come to about 30 minutes a day, roughly 900 a month.
-- It finds each month's questions by querying `bankQuestions` on the `Month` field, so a new month is picked up as soon as it's uploaded.
-- Each run reads one month's questions, a few hundred Firestore reads at most, well inside the free 50,000 a day. The bot only reads; it never writes to Firestore.
-- When it falls back to another month, the run log on the Actions tab says why (for example "Oct-26 is not in the bank yet; using Sep-26").
-- At 5 a day, a month needs about 155 text questions to last the whole month. A smaller month runs out early, and the bot moves on to the previous month.
+This prints the Telegram calls instead of making them, and doesn't change `state/`.

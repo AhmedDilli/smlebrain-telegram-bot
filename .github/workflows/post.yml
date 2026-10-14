@@ -1,17 +1,26 @@
-name: Post SMLE questions
+name: Post questions
 
 on:
   schedule:
-    # Wakes every 30 minutes from 9:55 AM to 4:25 PM Riyadh (UTC+3). slot.js
-    # picks a random time between 10:00 AM and 5:00 PM each day; the run just
-    # before it waits until that minute and posts, and the others stop.
-    - cron: '55 6-12 * * *' # 9:55 AM ... 3:55 PM Riyadh
+    # Wakes every 30 minutes from 9:55 AM to 4:55 PM Riyadh (UTC+3). Each run
+    # sends the posts due before the next one (see lib/schedule.js); post
+    # times are random between 10:00 AM and 5:00 PM, set in channels.json.
+    - cron: '55 6-13 * * *' # 9:55 AM ... 4:55 PM Riyadh
     - cron: '25 7-13 * * *' # 10:25 AM ... 4:25 PM Riyadh
-  # Adds a "Run workflow" button on the Actions tab. It always posts.
+  # "Run workflow" on the Actions tab: posts to one channel right away.
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel to post to (a name from channels.json)
+        type: choice
+        options: [smle, fm_part1, im_part1, peds_part1]
+        default: fm_part1
+      count:
+        description: How many posts to send now
+        default: '1'
 
 permissions:
-  contents: write # to commit posted.json back
+  contents: write # to commit state/ back
 
 concurrency:
   group: telegram-post
@@ -20,47 +29,36 @@ concurrency:
 jobs:
   post:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - name: Is it time to post?
-        id: slot
-        run: node slot.js
-        env:
-          SCHEDULE: ${{ github.event.schedule }}
-
       - uses: actions/setup-node@v4
-        if: steps.slot.outputs.post == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
-      - if: steps.slot.outputs.post == 'true'
-        run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
 
       - name: Post questions
-        id: post
-        if: steps.slot.outputs.post == 'true'
-        run: node post.js
+        run: node run.js
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          QUESTIONS_PER_POST: '5'
-          MONTH: '' # empty = the current month; set e.g. 'Sep-26' to force one
+          RESIDENCY_FIREBASE_SERVICE_ACCOUNT: ${{ secrets.RESIDENCY_FIREBASE_SERVICE_ACCOUNT }}
+          SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_CHANNEL: ${{ github.event.inputs.channel }}
+          MANUAL_COUNT: ${{ github.event.inputs.count }}
 
-      # Runs even if posting failed halfway, so questions that did go out are
-      # never posted again.
+      # Runs even if a post failed, so questions that did go out are never
+      # posted again.
       - name: Remember what was posted
-        if: always() && steps.slot.outputs.post == 'true'
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add posted.json
-          if [ -n "${{ steps.slot.outputs.date }}" ] && [ "${{ steps.post.outcome }}" = "success" ]; then
-            echo "${{ steps.slot.outputs.date }}" > last-post.txt
-            git add last-post.txt
-          fi
+          git add state
           if ! git diff --cached --quiet; then
             git commit -m "Record posted questions"
             git pull --rebase
