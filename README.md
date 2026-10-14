@@ -39,7 +39,7 @@ This prints the 3 messages it would send. It doesn't post anything and doesn't c
 
 ## Notes
 
-- The month list comes from `bankMeta/smle_filters`, the index the app already keeps. After uploading a new month, rebuild it from the app as usual, and the bot will see the new month.
-- Each run costs about 7 Firestore reads: the month index plus 6 questions, of which it keeps 3. The bot only reads; it never writes to Firestore.
+- It finds each month's questions by querying `bankQuestions` on the `Month` field, so a new month is picked up as soon as it's uploaded.
+- Each run reads one month's questions, a few hundred Firestore reads at most, well inside the free 50,000 a day. The bot only reads; it never writes to Firestore.
 - When it falls back to another month, the run log on the Actions tab says why (for example "Oct-26 is not in the bank yet; using Sep-26").
 - At 3 a day, a month needs about 93 text questions to last the whole month. A smaller month runs out early, and the bot moves on to the previous month.

@@ -4,13 +4,12 @@
  * Posts SMLE questions from one month to a Telegram channel as plain text.
  *
  * Each run:
- *   1. Reads bankMeta/smle_filters, the month -> itemIDs index the app already
- *      keeps (one document read).
- *   2. Takes the current month on Riyadh's calendar ('Oct-26'). If that month
- *      is not in the bank yet, or has nothing unposted left, it falls back to
- *      the newest month that does.
- *   3. Fetches questions from that month that have not been posted before and
- *      have no images, and keeps QUESTIONS_PER_POST of them.
+ *   1. Takes the current month on Riyadh's calendar ('Oct-26').
+ *   2. Fetches that month's questions from bankQuestions, leaving out ones
+ *      already posted and ones with images. If fewer than QUESTIONS_PER_POST
+ *      are left (month not uploaded yet, or used up), tries the month before,
+ *      and so on back.
+ *   3. Picks QUESTIONS_PER_POST of them at random.
  *   4. Sends each as one plain-text message: the case, then the four options.
  *      No header, no month, no answer.
  *   5. Records the posted itemIDs in posted.json so nothing repeats.
@@ -28,7 +27,8 @@ const fs = require('fs');
 const path = require('path');
 
 const BANK_COLLECTION = 'bankQuestions';
-const FILTER_INDEX_DOC = ['bankMeta', 'smle_filters'];
+const MONTH_FIELD = 'Month'; // a list such as ['Sep-26', 'Oct-26']
+const LOOKBACK_MONTHS = 24; // how far back to look for unposted questions
 const STATE_FILE = path.join(__dirname, 'posted.json');
 const TELEGRAM_LIMIT = 4096;
 
@@ -104,24 +104,13 @@ function formatQuestion(data) {
   return `${text(data.Question)}\n\n${options}`;
 }
 
-/** Index of month label -> itemIDs, from the document the app maintains. */
-async function readMonthIndex(db) {
-  const [collection, doc] = FILTER_INDEX_DOC;
-  const snapshot = await db.collection(collection).doc(doc).get();
-  if (!snapshot.exists) {
-    throw new Error(`${collection}/${doc} does not exist. Rebuild the filter index from the app.`);
-  }
-  const payload = snapshot.get('payload');
-  if (typeof payload !== 'string' || !payload) {
-    throw new Error(`${collection}/${doc} has no payload.`);
-  }
-  const byAxis = JSON.parse(payload).byAxis ?? {};
-  const index = new Map();
-  for (const [label, ids] of Object.entries(byAxis)) {
-    if (monthOrdinal(label) === null || !Array.isArray(ids)) continue;
-    index.set(label, ids.map(String));
-  }
-  return index;
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A month number from monthOrdinal() -> the bank's label, 'Oct-26'. */
+function monthLabel(ordinal) {
+  const year = String(Math.floor(ordinal / 12) % 100).padStart(2, '0');
+  return `${MONTH_ABBR[ordinal % 12]}-${year}`;
 }
 
 /** This month as the bank labels it, on Riyadh's calendar: 'Oct-26'. */
@@ -135,36 +124,26 @@ function currentMonthLabel(now = new Date()) {
   return `${get('month')}-${get('year')}`;
 }
 
-/**
- * The order months are tried in: this month first, then the rest newest
- * first. The fallback only matters early in a month, before its questions
- * are uploaded, or if this month runs out of unposted questions.
- */
-function monthsToTry(index, current) {
-  const newestFirst = [...index.keys()]
-    .sort((a, b) => monthOrdinal(b) - monthOrdinal(a))
-    .filter((label) => label !== current);
-  return index.has(current) ? [current, ...newestFirst] : newestFirst;
+/** [start, the month before, the one before that, ...], [count] in all. */
+function monthsBackFrom(start, count) {
+  const first = monthOrdinal(start);
+  if (first === null) throw new Error(`MONTH must look like 'Oct-26', not '${start}'.`);
+  return Array.from({ length: count }, (_, i) => monthLabel(first - i));
 }
 
-/** Up to [count] postable questions from [ids], in random order. */
-async function pickQuestions(db, ids, count) {
-  const picked = [];
-  const candidates = shuffle(ids);
-  // Each document fetched is a billed read, so ask for a few more than needed
-  // (to cover image questions) rather than Firestore's maximum of 30.
-  const batch = Math.min(30, count * 2);
-  for (let start = 0; start < candidates.length && picked.length < count; start += batch) {
-    const chunk = candidates.slice(start, start + batch);
-    const snapshot = await db.collection(BANK_COLLECTION).where('itemID', 'in', chunk).get();
-    const byId = new Map(snapshot.docs.map((doc) => [text(doc.get('itemID')), doc.data()]));
-    for (const id of chunk) {
-      const data = byId.get(id);
-      if (data && isPostable(data)) picked.push({ id, data });
-      if (picked.length === count) break;
-    }
-  }
-  return picked;
+/**
+ * Every question tagged with [month] that has not been posted and has no
+ * images. Queries the bank directly, so a month is visible the moment it is
+ * uploaded. A month holds a few hundred questions at most, which is a few
+ * hundred reads a day against a free allowance of 50,000.
+ */
+async function postableIn(db, month, posted) {
+  const snapshot = await db.collection(BANK_COLLECTION)
+    .where(MONTH_FIELD, 'array-contains', month)
+    .get();
+  return snapshot.docs
+    .map((doc) => ({ id: text(doc.get('itemID')) || doc.id, data: doc.data() }))
+    .filter(({ id, data }) => !posted.has(id) && isPostable(data));
 }
 
 async function sendMessage(message) {
@@ -194,19 +173,17 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function run(db) {
   const posted = readPosted();
-  const index = await readMonthIndex(db);
   const current = config.month || currentMonthLabel();
 
-  // Image questions are only discovered on fetch, so a month with enough ids
-  // can still come up short; the next month is tried then.
-  for (const month of monthsToTry(index, current)) {
-    const unposted = index.get(month).filter((id) => !posted.has(id));
-    if (unposted.length < config.perPost) continue;
-    const picked = await pickQuestions(db, unposted, config.perPost);
-    if (picked.length < config.perPost) continue;
+  // This month first; if it is not uploaded yet or is used up, the month
+  // before, and so on back.
+  for (const month of monthsBackFrom(current, LOOKBACK_MONTHS)) {
+    const available = await postableIn(db, month, posted);
+    if (available.length < config.perPost) continue;
+    const picked = shuffle(available).slice(0, config.perPost);
 
     if (month !== current) {
-      console.log(`${current} ${index.has(current) ? 'has no unposted questions left' : 'is not in the bank yet'}; using ${month}.`);
+      console.log(`${current} has no unposted text questions; using ${month}.`);
     }
 
     for (const [i, { id, data }] of picked.entries()) {
@@ -221,7 +198,11 @@ async function run(db) {
     return;
   }
 
-  throw new Error('No month has enough unposted text questions left.');
+  throw new Error(
+    `Fewer than ${config.perPost} unposted text questions in every month between ${current} and `
+    + `${monthsBackFrom(current, LOOKBACK_MONTHS).pop()} (${BANK_COLLECTION}, field ${MONTH_FIELD}). `
+    + 'If the bank is not empty, check that the Firebase key is from the SMLE Brain project.',
+  );
 }
 
 async function main() {
@@ -245,4 +226,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, formatQuestion, monthOrdinal, currentMonthLabel, monthsToTry, isPostable, config };
+module.exports = { run, formatQuestion, monthOrdinal, monthLabel, currentMonthLabel, monthsBackFrom, isPostable, config };
