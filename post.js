@@ -200,9 +200,24 @@ async function run(db) {
 
   throw new Error(
     `Fewer than ${config.perPost} unposted text questions in every month between ${current} and `
-    + `${monthsBackFrom(current, LOOKBACK_MONTHS).pop()} (${BANK_COLLECTION}, field ${MONTH_FIELD}). `
-    + 'If the bank is not empty, check that the Firebase key is from the SMLE Brain project.',
+    + `${monthsBackFrom(current, LOOKBACK_MONTHS).pop()}. ${await describeBank(db)}`,
   );
+}
+
+/** What the bank looks like, for the error message: no question text. */
+async function describeBank(db) {
+  try {
+    const projectId = JSON.parse(config.serviceAccount || '{}').project_id || 'unknown';
+    const collection = db.collection(BANK_COLLECTION);
+    const count = (await collection.count().get()).data().count;
+    const sample = await collection.limit(3).get();
+    const months = sample.docs.map((doc) => JSON.stringify(doc.get(MONTH_FIELD)));
+    const fields = sample.docs[0] ? Object.keys(sample.docs[0].data()).sort().join(', ') : 'none';
+    return `Project: ${projectId}. ${BANK_COLLECTION} holds ${count} documents. `
+      + `Sample ${MONTH_FIELD} values: ${months.join(' | ') || 'none'}. Fields: ${fields}.`;
+  } catch (error) {
+    return `Could not inspect the bank: ${error.message}`;
+  }
 }
 
 async function main() {
