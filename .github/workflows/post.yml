@@ -2,15 +2,11 @@ name: Post SMLE questions
 
 on:
   schedule:
-    # The bot wakes at all five times (UTC; Riyadh is UTC+3). slot.js picks
-    # one of them at random each day, and only that run posts. GitHub can
-    # start scheduled runs a few minutes late.
-    # If you change these, change SLOTS in slot.js to match.
-    - cron: '0 7 * * *'   # 10:00 AM Riyadh
-    - cron: '0 10 * * *'  #  1:00 PM
-    - cron: '30 12 * * *' #  3:30 PM
-    - cron: '0 13 * * *'  #  4:00 PM
-    - cron: '15 14 * * *' #  5:15 PM
+    # Wakes every 30 minutes from 9:55 AM to 4:25 PM Riyadh (UTC+3). slot.js
+    # picks a random time between 10:00 AM and 5:00 PM each day; the run just
+    # before it waits until that minute and posts, and the others stop.
+    - cron: '55 6-12 * * *' # 9:55 AM ... 3:55 PM Riyadh
+    - cron: '25 7-13 * * *' # 10:25 AM ... 4:25 PM Riyadh
   # Adds a "Run workflow" button on the Actions tab. It always posts.
   workflow_dispatch:
 
@@ -27,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Is this today's time?
+      - name: Is it time to post?
         id: slot
         run: node slot.js
         env:
@@ -43,6 +39,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Post questions
+        id: post
         if: steps.slot.outputs.post == 'true'
         run: node post.js
         env:
@@ -60,6 +57,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add posted.json
+          if [ -n "${{ steps.slot.outputs.date }}" ] && [ "${{ steps.post.outcome }}" = "success" ]; then
+            echo "${{ steps.slot.outputs.date }}" > last-post.txt
+            git add last-post.txt
+          fi
           if ! git diff --cached --quiet; then
             git commit -m "Record posted questions"
             git pull --rebase
