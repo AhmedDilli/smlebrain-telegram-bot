@@ -9,10 +9,7 @@ Each run posts 3 questions from the current month (October 2026 in October, Nove
 1. **Create the bot.** In Telegram, open @BotFather, send `/newbot` and follow the prompts. Copy the token it gives you.
 2. **Let it post.** Open your channel → Administrators → Add admin → search for the bot. Give it "Post messages".
 3. **Get a Firebase key.** Firebase Console → Project settings → Service accounts → Generate new private key. A `.json` file downloads. Never commit this file or share it.
-4. **Make a private GitHub repo,** for example `smlebrain-telegram-bot`, and push this folder to it. First move `post.yml` to `.github/workflows/post.yml`; GitHub only runs workflows from that folder:
-   ```
-   mkdir -p .github/workflows && mv post.yml .github/workflows/
-   ```
+4. **The code is in the repo** `AhmedDilli/smlebrain-telegram-bot`, with the workflow already at `.github/workflows/post.yml`.
 5. **Add three secrets.** In the repo, go to Settings → Secrets and variables → Actions → New repository secret:
    - `TELEGRAM_BOT_TOKEN`: the token from step 1
    - `TELEGRAM_CHANNEL`: `@yourchannelname`, or the numeric `-100…` id for a private channel
