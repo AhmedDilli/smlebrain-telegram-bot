@@ -1,0 +1,14 @@
+{
+  "name": "smlebrain-telegram-bot",
+  "private": true,
+  "description": "Posts SMLE Brain questions from one month to a Telegram channel.",
+  "main": "post.js",
+  "scripts": {
+    "post": "node post.js",
+    "preview": "DRY_RUN=true node post.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

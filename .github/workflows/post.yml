@@ -1,0 +1,51 @@
+name: Post SMLE questions
+
+on:
+  schedule:
+    # 14:45 UTC = 5:45 PM Riyadh, every day. GitHub can start scheduled runs
+    # a few minutes late. Change the time here: https://crontab.guru
+    - cron: '45 14 * * *'
+  # Adds a "Run workflow" button on the Actions tab for posting on demand.
+  workflow_dispatch:
+
+permissions:
+  contents: write # to commit posted.json back
+
+concurrency:
+  group: telegram-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Post questions
+        run: node post.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          QUESTIONS_PER_POST: '3'
+          MONTH: '' # empty = the current month; set e.g. 'Sep-26' to force one
+
+      # Runs even if posting failed halfway, so questions that did go out are
+      # never posted again.
+      - name: Remember what was posted
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add posted.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Record posted questions"
+            git push
+          fi
