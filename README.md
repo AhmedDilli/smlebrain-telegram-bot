@@ -60,10 +60,11 @@ Actions tab → "Post questions" → Run workflow. Pick a channel and how many p
 
 ## How it works
 
-- GitHub can only start runs on a fixed schedule, so the workflow wakes every 30 minutes from 9:55 AM to 4:55 PM. Each run sends the posts due before the next run, waiting until each one's exact minute. If GitHub starts a run late, that post goes out late by the same amount; a post more than an hour overdue is skipped for the day rather than sent in a burst.
+- GitHub's timed schedule skips many runs on busy days, so it's only used to start the day. A run starts in the morning (the schedule tries every hour from 7:05 AM to 4:05 PM, and one success is enough), then stays awake through 10 AM–5 PM and sends each post at its exact minute. A run can last 6 hours at most, so before that it starts its own replacement through GitHub's API, and those runs aren't skipped. If the day starts late, posts less than an hour overdue still go out, and earlier ones are skipped for that day rather than sent in a burst.
+- While the day's run is going, a run started by hand waits in line until it finishes, around 5 PM.
 - `state/<channel>.json` records each channel's posted question ids and which of today's posts are done. The workflow commits it after every run.
 - SMLE questions come from Firestore `bankQuestions`, queried by `Month`. Residency Brain banks are read from the `banks` catalog, then downloaded from Storage.
-- If one channel fails, the others still post, and the failed post is retried on the next run. Errors appear on the run's page on the Actions tab.
+- If a post fails, the others still go out, and the failed one is retried twice, 5 minutes apart. Errors appear on the run's page on the Actions tab.
 - The bot only reads from Firebase. It never writes to it.
 
 ## Preview without posting
