@@ -4,10 +4,11 @@ on:
   schedule:
     # Starts the day's poster, which stays awake through 10 AM - 5 PM Riyadh
     # and posts at each exact minute (see daemon() in run.js). GitHub skips
-    # many scheduled runs, so it tries every hour from 7:05 AM to 4:05 PM
-    # Riyadh (UTC+3); one start a day is enough, and extra starts find the
-    # work already done or waiting.
-    - cron: '5 4-13 * * *'
+    # many scheduled runs and starts others hours late, so it tries every
+    # hour from 3:05 AM to 4:05 PM Riyadh (UTC+3). One start a day is enough;
+    # extra starts find the work already done or waiting. A run that starts
+    # early just waits until 10 AM.
+    - cron: '5 0-13 * * *'
   # "Run workflow" on the Actions tab: posts to one channel right away.
   # The poster also uses this to start its own replacement (daemon: true).
   workflow_dispatch:
@@ -15,7 +16,7 @@ on:
       channel:
         description: Channel to post to (a name from channels.json)
         type: choice
-        options: [smle, fm_part1, im_part1, peds_part1, gs_part1, er_part1]
+        options: [smle, fm_part1, im_part1, peds_part1, gs_part1, er_part1, obgyn_part1, derm_part1]
         default: fm_part1
       count:
         description: How many posts to send now

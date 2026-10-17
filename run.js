@@ -24,7 +24,7 @@
 const path = require('path');
 const fs = require('fs');
 
-const { postTimes, clock, localNow, minutesOf, MAX_LATE } = require('./lib/schedule');
+const { remainingPlan, postTimes, clock, localNow, minutesOf, MAX_LATE } = require('./lib/schedule');
 const { commitState, dispatchContinuation } = require('./lib/github');
 const { StateStore } = require('./lib/state');
 const { Telegram } = require('./lib/telegram');
@@ -123,6 +123,7 @@ async function daemon({ env, telegram, state, sourceFor, log, now, wait, commit,
   const budgetMinutes = Number(env.DAEMON_BUDGET_MINUTES || 330);
   const startedAt = now().getTime();
   const failures = new Map(); // "key#slot" -> { count, retryAt }
+  const plans = new Map(); // date -> { channelKey: [{ slot, at }] }
   const MAX_TRIES = 3;
   let gaveUp = 0;
 
@@ -136,10 +137,21 @@ async function daemon({ env, telegram, state, sourceFor, log, now, wait, commit,
     const current = now();
     const { date, minutes } = localNow(timeZone, current);
 
+    // The day's plan is made once per run (and again if the date changes),
+    // catching up late-started days; see remainingPlan.
+    if (!plans.has(date)) {
+      plans.clear();
+      plans.set(date, Object.fromEntries(Object.entries(config.channels).map(([key, channel]) => [key,
+        remainingPlan(key, date, channel.postsPerDay, config.window, minutes, (slot) => isDone(key, date, slot))])));
+      const caughtUp = Object.entries(plans.get(date))
+        .filter(([key, list]) => list.some(({ slot, at }) => at !== postTimes(key, date, config.channels[key].postsPerDay, config.window)[slot]));
+      if (caughtUp.length) log(`Started late: spreading the rest of today's posts for ${caughtUp.map(([k]) => k).join(', ')} over the remaining hours.`);
+    }
+
     // Everything still to come today (or overdue by less than MAX_LATE).
     const open = [];
-    for (const [key, channel] of Object.entries(config.channels)) {
-      postTimes(key, date, channel.postsPerDay, config.window).forEach((at, slot) => {
+    for (const [key, list] of Object.entries(plans.get(date))) {
+      list.forEach(({ slot, at }) => {
         if (isDone(key, date, slot) || minutes - at > MAX_LATE) return;
         const f = failures.get(`${key}#${slot}`);
         if (f && f.count >= MAX_TRIES) return;

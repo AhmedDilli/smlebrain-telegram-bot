@@ -10,6 +10,8 @@ One bot (@Smlebrainbot) posts questions to several Telegram channels every day. 
 | @peds_part1 | Residency Brain `peds_p1` | 5 questions, each at its own random time |
 | @GS_part1 | Residency Brain `gs_p1` | 5 questions, each at its own random time |
 | @ER_part1 | Residency Brain `er_p1` | 5 questions, each at its own random time |
+| @oby_part1 | Residency Brain `obgyn_p1` | 5 questions, each at its own random time |
+| @derm_part1 | Residency Brain `derm_p1` | 5 questions, each at its own random time |
 
 All times are random between 10:00 AM and 5:00 PM Riyadh time, different every day. A channel's 5 times are spread across the day, at least 20 minutes apart. No question is ever posted twice to the same channel.
 
@@ -60,7 +62,7 @@ Actions tab → "Post questions" → Run workflow. Pick a channel and how many p
 
 ## How it works
 
-- GitHub's timed schedule skips many runs on busy days, so it's only used to start the day. A run starts in the morning (the schedule tries every hour from 7:05 AM to 4:05 PM, and one success is enough), then stays awake through 10 AM–5 PM and sends each post at its exact minute. A run can last 6 hours at most, so before that it starts its own replacement through GitHub's API, and those runs aren't skipped. If the day starts late, posts less than an hour overdue still go out, and earlier ones are skipped for that day rather than sent in a burst.
+- GitHub's timed schedule skips many runs on busy days, so it's only used to start the day. A run starts early (the schedule tries every hour from 3:05 AM to 4:05 PM, and one success is enough), then stays awake through 10 AM–5 PM and sends each post at its exact minute. A run can last 6 hours at most, so before that it starts its own replacement through GitHub's API, and those runs aren't skipped. If GitHub starts the day late anyway, the posts already missed are spread over the rest of the day, so each channel still gets all 5.
 - While the day's run is going, a run started by hand waits in line until it finishes, around 5 PM.
 - `state/<channel>.json` records each channel's posted question ids and which of today's posts are done. The workflow commits it after every run.
 - SMLE questions come from Firestore `bankQuestions`, queried by `Month`. Residency Brain banks are read from the `banks` catalog, then downloaded from Storage.

@@ -45,6 +45,20 @@
       "bank": "er_p1",
       "postsPerDay": 5,
       "questionsPerPost": 1
+    },
+    "obgyn_part1": {
+      "chat": "@oby_part1",
+      "source": "residency",
+      "bank": "obgyn_p1",
+      "postsPerDay": 5,
+      "questionsPerPost": 1
+    },
+    "derm_part1": {
+      "chat": "@derm_part1",
+      "source": "residency",
+      "bank": "derm_p1",
+      "postsPerDay": 5,
+      "questionsPerPost": 1
     }
   }
 }
