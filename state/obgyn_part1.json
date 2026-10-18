@@ -6,13 +6,15 @@
     "OBGYNP1-0186",
     "OBGYNP1-0403",
     "OBGYNP1-0543",
-    "OBGYNP1-0475"
+    "OBGYNP1-0475",
+    "OBGYNP1-0657"
   ],
   "today": {
     "date": "2026-10-18",
     "slots": [
       0,
-      1
+      1,
+      2
     ]
   }
 }
