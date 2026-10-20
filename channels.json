@@ -15,49 +15,49 @@
       "chat": "@fm_part1",
       "source": "residency",
       "bank": "fm_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     },
     "im_part1": {
       "chat": "@im_part1",
       "source": "residency",
       "bank": "im_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     },
     "peds_part1": {
       "chat": "@peds_part1",
       "source": "residency",
       "bank": "peds_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     },
     "gs_part1": {
       "chat": "@GS_part1",
       "source": "residency",
       "bank": "gs_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     },
     "er_part1": {
       "chat": "@ER_part1",
       "source": "residency",
       "bank": "er_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     },
     "obgyn_part1": {
       "chat": "@oby_part1",
       "source": "residency",
       "bank": "obgyn_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     },
     "derm_part1": {
       "chat": "@derm_part1",
       "source": "residency",
       "bank": "derm_p1",
-      "postsPerDay": 5,
+      "postsPerDay": 1,
       "questionsPerPost": 1
     }
   }
