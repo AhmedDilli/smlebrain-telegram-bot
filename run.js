@@ -141,7 +141,7 @@ async function daemon({ env, telegram, state, sourceFor, log, now, wait, commit,
     // catching up late-started days; see remainingPlan.
     if (!plans.has(date)) {
       plans.clear();
-      plans.set(date, Object.fromEntries(Object.entries(config.channels).map(([key, channel]) => [key,
+      plans.set(date, Object.fromEntries(Object.entries(config.channels).filter(([, channel]) => !channel.paused).map(([key, channel]) => [key,
         remainingPlan(key, date, channel.postsPerDay, config.window, minutes, (slot) => isDone(key, date, slot))])));
       const caughtUp = Object.entries(plans.get(date))
         .filter(([key, list]) => list.some(({ slot, at }) => at !== postTimes(key, date, config.channels[key].postsPerDay, config.window)[slot]));

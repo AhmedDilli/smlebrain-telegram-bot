@@ -4,7 +4,7 @@ One bot (@Smlebrainbot) posts questions to several Telegram channels every day. 
 
 | Channel | Questions from | Each day |
 |---|---|---|
-| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | 5 questions together, at one random time |
+| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | **Paused.** When on: 5 questions together, at one random time |
 | @fm_part1 | Residency Brain `fm_p1` | 1 question at a random time |
 | @im_part1 | Residency Brain `im_p1` | 1 question at a random time |
 | @peds_part1 | Residency Brain `peds_p1` | 1 question at a random time |
@@ -55,6 +55,10 @@ Add an entry to `channels.json`, and add the same name to the `channel` options 
 ```
 
 `bank` is the bank id in Residency Brain (`derm_p1`, `gs_p1`, `er_p1`, …). `postsPerDay` × `questionsPerPost` is the number of questions a day. The 10 AM–5 PM window is `window` at the top of the file.
+
+## Pausing a channel
+
+Add `"paused": true` to the channel in `channels.json`, and remove it (or set it to `false`) to switch the channel back on. A paused channel posts nothing on schedule; posting to it by hand still works.
 
 ## Posting by hand
 
