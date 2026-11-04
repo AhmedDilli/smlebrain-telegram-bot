@@ -4,7 +4,7 @@ One bot (@Smlebrainbot) posts questions to several Telegram channels every day. 
 
 | Channel | Questions from | Each day |
 |---|---|---|
-| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | **Paused.** When on: 5 questions together, at one random time |
+| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | 5 questions together, at one random time |
 | @fm_part1 | Residency Brain `fm_p1` | 1 question at a random time |
 | @im_part1 | Residency Brain `im_p1` | 1 question at a random time |
 | @peds_part1 | Residency Brain `peds_p1` | 1 question at a random time |
@@ -17,7 +17,7 @@ All times are random between 10:00 AM and 5:00 PM Riyadh time, different every d
 
 ## What a post looks like
 
-**SMLE:** plain text, just the case and options A–D. No month, no answer. If the current month isn't uploaded yet or is used up, the bot uses the previous month.
+**SMLE:** plain text: the month and year (for example "November 2026"), then the case and options A–D. No answer. If the current month isn't uploaded yet or is used up, the bot uses the previous month.
 
 **Part 1 channels:** a Telegram quiz. Members tap an answer, and Telegram shows right or wrong.
 
