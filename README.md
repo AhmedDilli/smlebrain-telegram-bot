@@ -4,7 +4,7 @@ One bot (@Smlebrainbot) posts questions to several Telegram channels every day. 
 
 | Channel | Questions from | Each day |
 |---|---|---|
-| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | 5 questions together, at one random time |
+| SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain, current month | **Paused.** When on: 5 questions together, at one random time |
 | @fm_part1 | Residency Brain `fm_p1` | 1 question at a random time |
 | @im_part1 | Residency Brain `im_p1` | 1 question at a random time |
 | @peds_part1 | Residency Brain `peds_p1` | 1 question at a random time |
