@@ -6,7 +6,6 @@
   },
   "channels": {
     "smle": {
-      "paused": true,
       "chatEnv": "TELEGRAM_CHANNEL",
       "source": "smle",
       "postsPerDay": 1,
