@@ -11,7 +11,7 @@ One bot (@Smlebrainbot) posts questions to several Telegram channels every day. 
 | @GS_part1 | Residency Brain `gs_p1` | 1 question at a random time |
 | @ER_part1 | Residency Brain `er_p1` | 1 question at a random time |
 | @oby_part1 | Residency Brain `obgyn_p1` | 1 question at a random time |
-| @derm_part1 | Residency Brain `derm_p1` | 1 question at a random time |
+| @derm_part1 | Residency Brain `derm_p1` | **Paused.** When on: 1 question at a random time |
 
 All times are random between 10:00 AM and 5:00 PM Riyadh time, different every day. A channel with several posts a day has them spread across the day, at least 20 minutes apart. No question is ever posted twice to the same channel.
 
