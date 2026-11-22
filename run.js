@@ -55,7 +55,7 @@ function makeSources(env, firestore) {
     if (!sources[key]) {
       const channel = config.channels[key];
       if (channel.source === 'smle') {
-        sources[key] = new SmleSource(firestore('smlebrain', 'FIREBASE_SERVICE_ACCOUNT'), { month: env.SMLE_MONTH || '' });
+        sources[key] = new SmleSource(firestore('smlebrain', 'FIREBASE_SERVICE_ACCOUNT'), { month: env.SMLE_MONTH || '', imageCount: channel.imageQuestionsPerPost || 0 });
       } else if (channel.source === 'residency') {
         // Channels on the same bank share one download.
         const shared = Object.entries(sources).find(([k]) => config.channels[k].bank === channel.bank);
@@ -83,8 +83,8 @@ async function postOnce({ key, env, telegram, state, sourceFor, log }) {
   const chat = chatFor(key, env);
   const picked = await source.pick(channel.questionsPerPost, state.postedSet(key));
   for (const [i, item] of picked.entries()) {
-    await source.send(telegram, chat, item);
-    if (!telegram.dryRun) state.addPosted(key, item.id); // saved per question
+    const sent = await source.send(telegram, chat, item);
+    if (sent !== false && !telegram.dryRun) state.addPosted(key, item.id); // saved per question
     if (i < picked.length - 1) await sleep(1500);
   }
   log(`${key}: posted ${picked.map((q) => q.id).join(', ')}`);

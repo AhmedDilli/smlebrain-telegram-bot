@@ -9,7 +9,8 @@
       "chatEnv": "TELEGRAM_CHANNEL",
       "source": "smle",
       "postsPerDay": 1,
-      "questionsPerPost": 5
+      "questionsPerPost": 5,
+      "imageQuestionsPerPost": 1
     },
     "fm_part1": {
       "chat": "@fm_part1",
