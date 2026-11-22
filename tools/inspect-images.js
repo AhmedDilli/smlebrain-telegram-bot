@@ -5,27 +5,34 @@ admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.F
 const db = admin.firestore();
 const note = (m) => console.log(`::notice::${String(m).replace(/\r?\n/g, ' ')}`);
 const redact = (u) => String(u).replace(/([?&](token|X-Goog-Signature|key)=)[^&]+/gi, '$1…');
+const urls = (d) => (Array.isArray(d.get('ImageUrls')) ? d.get('ImageUrls') : []).filter((u) => String(u || '').trim());
 
 (async () => {
-  for (const month of ['Nov-26', 'Oct-26', 'Sep-26', 'Aug-26']) {
-    const snap = await db.collection('bankQuestions').where('Month', 'array-contains', month).get();
-    const withImg = snap.docs.filter((d) => (d.get('ImageUrls') || []).some((u) => String(u || '').trim()));
-    const textOk = snap.docs.length - withImg.length;
-    const counts = {};
-    withImg.forEach((d) => { const n = d.get('ImageUrls').filter((u) => String(u || '').trim()).length; counts[n] = (counts[n] || 0) + 1; });
-    note(`${month}: ${snap.docs.length} questions, ${withImg.length} with images (images per question: ${JSON.stringify(counts)}), ${textOk} text-only`);
-  }
-  const snap = await db.collection('bankQuestions').where('Month', 'array-contains', 'Oct-26').get();
-  const samples = snap.docs.filter((d) => (d.get('ImageUrls') || []).some((u) => String(u || '').trim())).slice(0, 3);
-  for (const d of samples) {
-    const data = d.data();
-    note(`sample ${d.id}: keys=${Object.keys(data).join(',')}`);
-    note(`sample ${d.id}: Question length=${String(data.Question || '').length}; image-ish fields: ${JSON.stringify(Object.fromEntries(Object.entries(data).filter(([k]) => /image|img|url|photo/i.test(k)).map(([k, v]) => [k, Array.isArray(v) ? v.map(redact) : redact(v)])))}`);
-    for (const url of data.ImageUrls.filter((u) => String(u || '').trim()).slice(0, 2)) {
+  const snap = await db.collection('bankQuestions').get();
+  const fieldNames = new Set();
+  snap.docs.forEach((d) => Object.keys(d.data()).forEach((k) => fieldNames.add(k)));
+  note(`total docs ${snap.size}; fields: ${[...fieldNames].join(',')}`);
+  const withImg = snap.docs.filter((d) => urls(d).length);
+  const perMonth = {};
+  withImg.forEach((d) => (d.get('Month') || []).forEach((m) => { perMonth[m] = (perMonth[m] || 0) + 1; }));
+  const nImgs = {};
+  withImg.forEach((d) => { const n = String(urls(d).length); nImgs[`n${n}`] = (nImgs[`n${n}`] || 0) + 1; });
+  note(`with ImageUrls: ${withImg.length}; images per question: ${JSON.stringify(nImgs)}`);
+  note(`image questions per month: ${JSON.stringify(perMonth)}`);
+  const complete = withImg.filter((d) => ['Question', 'A', 'B', 'C', 'D'].every((k) => String(d.get(k) || '').trim())).length;
+  note(`image questions with stem + 4 options: ${complete}`);
+  const lens = withImg.map((d) => String(d.get('Question') || '').length).sort((a, b) => a - b);
+  note(`stem length of image questions: min ${lens[0]}, median ${lens[Math.floor(lens.length / 2)]}, max ${lens[lens.length - 1]}`);
+  // other image-ish fields on any doc
+  const imgish = [...fieldNames].filter((k) => /image|img|photo|pic|url/i.test(k));
+  note(`image-ish field names: ${imgish.join(',')}`);
+  for (const d of withImg.slice(0, 4)) {
+    note(`sample ${d.id}: Month=${JSON.stringify(d.get('Month'))} urls=${JSON.stringify(urls(d).map(redact)).slice(0, 300)}`);
+    for (const url of urls(d).slice(0, 1)) {
       try {
-        const res = await fetch(url, { method: 'GET' });
+        const res = await fetch(url);
         const buf = Buffer.from(await res.arrayBuffer());
-        note(`sample ${d.id}: GET ${redact(url).slice(0, 140)} -> ${res.status} ${res.headers.get('content-type')} ${buf.length} bytes (no login sent)`);
+        note(`sample ${d.id}: GET -> ${res.status} ${res.headers.get('content-type')} ${buf.length} bytes (no login sent)`);
       } catch (e) { note(`sample ${d.id}: fetch failed: ${e.message}`); }
     }
   }
