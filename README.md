@@ -17,7 +17,7 @@ All times are random between 10:00 AM and 5:00 PM Riyadh time, different every d
 
 ## What a post looks like
 
-**SMLE:** plain text: the month and year (for example "November 2026"), then the case and options A–D. No answer. One question a day is an image question: the pictures (a single photo, or an album of up to six) come first, then the same text. Image questions come from the `imageQuestions` collection, this month's first; if none are left, that post is made up of text questions. If the current month isn't uploaded yet or is used up, the bot uses the previous month.
+**SMLE:** plain text: the month and year (for example "November 2026"), then the case and options A–D. No answer. One question a day is an image question: the pictures (a single photo, or an album of up to six) come first, then the same text. Image questions come from the `imageQuestions` collection, this month's only; when the month has none left, that post is just text questions. If the current month isn't uploaded yet or is used up, the bot uses the previous month.
 
 **Part 1 channels:** a Telegram quiz. Members tap an answer, and Telegram shows right or wrong.
 
