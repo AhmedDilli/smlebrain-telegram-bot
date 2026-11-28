@@ -14,6 +14,7 @@
  *   TELEGRAM_CHANNEL                      the SMLE channel (chatEnv in channels.json)
  *   FIREBASE_SERVICE_ACCOUNT              key for the smlebrain project
  *   RESIDENCY_FIREBASE_SERVICE_ACCOUNT    key for the residency-brain project
+ *   SDLE_FIREBASE_SERVICE_ACCOUNT         key for the SDLE Brain project
  *   DAEMON                                "true" for the day's poster
  *   GITHUB_TOKEN, GITHUB_REPOSITORY       to start the next run (set by Actions)
  *   MANUAL_CHANNEL, MANUAL_COUNT          for runs started by hand
@@ -55,7 +56,14 @@ function makeSources(env, firestore) {
     if (!sources[key]) {
       const channel = config.channels[key];
       if (channel.source === 'smle') {
-        sources[key] = new SmleSource(firestore('smlebrain', 'FIREBASE_SERVICE_ACCOUNT'), { month: env.SMLE_MONTH || '', imageCount: channel.imageQuestionsPerPost || 0 });
+        // Another app with the same kind of bank (SDLE Brain) names its own
+        // Firebase project, key secret and collections in channels.json.
+        sources[key] = new SmleSource(firestore(channel.project || 'smlebrain', channel.keyEnv || 'FIREBASE_SERVICE_ACCOUNT'), {
+          month: env.SMLE_MONTH || '',
+          imageCount: channel.imageQuestionsPerPost || 0,
+          ...(channel.bankCollection ? { bankCollection: channel.bankCollection } : {}),
+          ...(channel.imageCollection ? { imageCollection: channel.imageCollection } : {}),
+        });
       } else if (channel.source === 'residency') {
         // Channels on the same bank share one download.
         const shared = Object.entries(sources).find(([k]) => config.channels[k].bank === channel.bank);

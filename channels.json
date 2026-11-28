@@ -12,6 +12,15 @@
       "questionsPerPost": 5,
       "imageQuestionsPerPost": 1
     },
+    "sdle": {
+      "paused": true,
+      "chat": "@sdlebrain",
+      "source": "smle",
+      "project": "sdle-brain",
+      "keyEnv": "SDLE_FIREBASE_SERVICE_ACCOUNT",
+      "postsPerDay": 1,
+      "questionsPerPost": 5
+    },
     "fm_part1": {
       "chat": "@fm_part1",
       "source": "residency",

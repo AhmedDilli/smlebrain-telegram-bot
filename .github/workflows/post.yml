@@ -16,7 +16,7 @@ on:
       channel:
         description: Channel to post to (a name from channels.json)
         type: choice
-        options: [smle, fm_part1, im_part1, peds_part1, gs_part1, er_part1, obgyn_part1, derm_part1]
+        options: [smle, sdle, fm_part1, im_part1, peds_part1, gs_part1, er_part1, obgyn_part1, derm_part1]
         default: fm_part1
       count:
         description: How many posts to send now
@@ -59,6 +59,7 @@ jobs:
           TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           RESIDENCY_FIREBASE_SERVICE_ACCOUNT: ${{ secrets.RESIDENCY_FIREBASE_SERVICE_ACCOUNT }}
+          SDLE_FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SDLE_FIREBASE_SERVICE_ACCOUNT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DAEMON: ${{ github.event_name == 'schedule' || github.event.inputs.daemon == 'true' }}
           MANUAL_CHANNEL: ${{ github.event.inputs.channel }}
