@@ -1,8 +1,12 @@
 'use strict';
 // Read-only look at the SDLE Brain Firestore. Posts nothing.
 const admin = require('firebase-admin');
-const key = JSON.parse(process.env.SDLE_FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({ credential: admin.credential.cert(key) });
+const raw = process.env.SDLE_FIREBASE_SERVICE_ACCOUNT || '';
+if (!raw.trim()) { console.log('::error::SDLE_FIREBASE_SERVICE_ACCOUNT is empty or not set in the repo secrets (name must match exactly).'); process.exit(1); }
+let key;
+try { key = JSON.parse(raw); } catch (e) { console.log(`::error::The secret is not valid JSON (${e.message.slice(0, 60)}); length ${raw.length}, starts with "${raw.trim().slice(0, 1)}".`); process.exit(1); }
+if (!key.project_id || !key.private_key) { console.log(`::error::The secret parses but is missing project_id/private_key (has: ${Object.keys(key).join(',')}).`); process.exit(1); }
+try { admin.initializeApp({ credential: admin.credential.cert(key) }); } catch (e) { console.log(`::error::Key rejected: ${String(e.message).slice(0, 200)}`); process.exit(1); }
 const db = admin.firestore();
 const plain = (s) => String(s).replace(/[{}]/g, '(').replace(/\r?\n/g, ' ');
 const note = (m) => console.log(`::notice::${plain(m)}`);
