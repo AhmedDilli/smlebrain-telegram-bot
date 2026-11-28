@@ -5,6 +5,7 @@ One bot (@Smlebrainbot) posts questions to several Telegram channels every day. 
 | Channel | Questions from | Each day |
 |---|---|---|
 | SMLE (`TELEGRAM_CHANNEL` secret) | SMLE Brain `bankQuestions` and `imageQuestions`, current month | 5 questions together (1 image question + 4 text), at one random time |
+| SDLE (@sdlebrain) | SDLE Brain `bankQuestions` (images are in the same bank), current month | 5 questions together (1 image question + 4 text), at one random time |
 | @fm_part1 | Residency Brain `fm_p1` | 1 question at a random time |
 | @im_part1 | Residency Brain `im_p1` | 1 question at a random time |
 | @peds_part1 | Residency Brain `peds_p1` | 1 question at a random time |
@@ -37,6 +38,7 @@ Repo → Settings → Secrets and variables → Actions:
 | `TELEGRAM_CHANNEL` | The SMLE channel's @username |
 | `FIREBASE_SERVICE_ACCOUNT` | Key file contents for the **smlebrain** Firebase project |
 | `RESIDENCY_FIREBASE_SERVICE_ACCOUNT` | Key file contents for the **residency-brain** Firebase project |
+| `SDLE_FIREBASE_SERVICE_ACCOUNT` | Key file contents for the **sdlebrain** Firebase project |
 
 The bot needs to be an admin with "Post messages" in every channel.
 
