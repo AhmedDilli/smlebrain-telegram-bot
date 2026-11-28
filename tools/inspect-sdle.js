@@ -1,38 +1,39 @@
 'use strict';
-// Read-only look at the SDLE Brain Firestore. Posts nothing.
+// Read-only look at SDLE image questions. Posts nothing.
 const admin = require('firebase-admin');
-const raw = process.env.SDLE_FIREBASE_SERVICE_ACCOUNT || '';
-if (!raw.trim()) { console.log('::error::SDLE_FIREBASE_SERVICE_ACCOUNT is empty or not set in the repo secrets (name must match exactly).'); process.exit(1); }
-let key;
-try { key = JSON.parse(raw); } catch (e) { console.log(`::error::The secret is not valid JSON (${e.message.slice(0, 60)}); length ${raw.length}, starts with "${raw.trim().slice(0, 1)}".`); process.exit(1); }
-if (!key.project_id || !key.private_key) { console.log(`::error::The secret parses but is missing project_id/private_key (has: ${Object.keys(key).join(',')}).`); process.exit(1); }
-try { admin.initializeApp({ credential: admin.credential.cert(key) }); } catch (e) { console.log(`::error::Key rejected: ${String(e.message).slice(0, 200)}`); process.exit(1); }
+const key = JSON.parse(process.env.SDLE_FIREBASE_SERVICE_ACCOUNT);
+admin.initializeApp({ credential: admin.credential.cert(key) });
 const db = admin.firestore();
-const plain = (s) => String(s).replace(/[{}]/g, '(').replace(/\r?\n/g, ' ');
-const note = (m) => console.log(`::notice::${plain(m)}`);
+const out = [];
+const note = (m) => out.push(String(m).replace(/[{}]/g, '(').replace(/\r?\n/g, ' '));
 const redact = (u) => String(u).replace(/([?&](token|X-Goog-Signature|key)=)[^&]+/gi, '$1…');
-const kind = (v) => (v == null ? 'null' : Array.isArray(v) ? `array(${v.length ? typeof v[0] : 0})` : v && v.toDate ? 'timestamp' : typeof v);
-const clip = (v) => (typeof v === 'string' ? redact(v).slice(0, 110) : Array.isArray(v) ? v.slice(0, 3).map(clip) : v && typeof v === 'object' && !v.toDate ? Object.fromEntries(Object.entries(v).slice(0, 6).map(([k, x]) => [k, clip(x)])) : v);
+const urls = (d) => (Array.isArray(d.get('ImageUrls')) ? d.get('ImageUrls') : []);
+const hist = (arr) => arr.reduce((h, v) => { h[`n${v}`] = (h[`n${v}`] || 0) + 1; return h; }, {});
 
 (async () => {
-  note(`project_id: ${key.project_id}`);
-  const cols = await db.listCollections();
-  note(`collections: ${cols.map((c) => c.id).join(', ')}`);
-  for (const col of cols) {
-    const snap = await col.get();
-    const fields = {};
-    snap.docs.forEach((d) => Object.entries(d.data()).forEach(([k, v]) => { const f = `${k}:${kind(v)}`; fields[f] = (fields[f] || 0) + 1; }));
-    note(`[${col.id}] ${snap.size} docs; fields: ${plain(JSON.stringify(fields))}`);
-    const months = {};
-    snap.docs.forEach((d) => { const m = d.get('Month') ?? d.get('month'); (Array.isArray(m) ? m : [m]).forEach((x) => { months[`m_${x}`] = (months[`m_${x}`] || 0) + 1; }); });
-    note(`[${col.id}] Month values (counts): ${plain(JSON.stringify(months)).slice(0, 700)}`);
-    for (const d of snap.docs.slice(0, 2)) note(`[${col.id}] sample ${d.id}: ${plain(JSON.stringify(Object.fromEntries(Object.entries(d.data()).map(([k, v]) => [k, clip(v)])))).slice(0, 1100)}`);
-    // an example that has any image-ish field filled
-    const withImg = snap.docs.find((d) => Object.entries(d.data()).some(([k, v]) => /image|img|photo|pic/i.test(k) && (Array.isArray(v) ? v.length : v)));
-    if (withImg) {
-      note(`[${col.id}] image example ${withImg.id}: ${plain(JSON.stringify(Object.fromEntries(Object.entries(withImg.data()).filter(([k]) => /image|img|photo|pic|url|question|month/i.test(k)).map(([k, v]) => [k, clip(v)])))).slice(0, 900)}`);
-      const m = JSON.stringify(withImg.data()).match(/https?:\/\/[^"\s]+/);
-      if (m) { try { const r = await fetch(m[0]); const b = Buffer.from(await r.arrayBuffer()); note(`[${col.id}] image GET (no login) -> ${r.status} ${r.headers.get('content-type')} ${b.length} bytes; host ${new URL(m[0]).host}`); } catch (e) { note(`image fetch failed: ${e.message}`); } }
+  const snap = await db.collection('bankQuestions').get();
+  const img = snap.docs.filter((d) => urls(d).some((u) => String(u || '').trim()));
+  note(`image questions: ${img.length} of ${snap.size}; images per question ${JSON.stringify(hist(img.map((d) => urls(d).filter(Boolean).length)))}`);
+  const valid = img.filter((d) => urls(d).every((u) => /^https?:\/\//.test(u)));
+  note(`all links http(s): ${valid.length}; hosts: ${JSON.stringify(hist(img.flatMap((d) => urls(d)).map((u) => { try { return new URL(u).host; } catch { return 'bad'; } })))}`);
+  const months = {};
+  img.forEach((d) => (d.get('Month') || []).forEach((m) => { months[m] = (months[m] || 0) + 1; }));
+  note(`image questions per month: ${JSON.stringify(months)}`);
+  note(`image questions with E: ${img.filter((d) => d.get('E')).length}, with F: ${img.filter((d) => d.get('F')).length}, missing D: ${img.filter((d) => !String(d.get('D') || '').trim()).length}`);
+  const lens = img.map((d) => String(d.get('Question') || '').length).sort((a, b) => a - b);
+  note(`stem length of image questions: min ${lens[0]} median ${lens[lens.length >> 1]} max ${lens[lens.length - 1]}`);
+  const nov = img.filter((d) => (d.get('Month') || []).includes('Nov-26'));
+  note(`Nov-26: ${snap.docs.filter((d) => (d.get('Month') || []).includes('Nov-26')).length} total, ${nov.length} with images`);
+  const ex = img.find((d) => urls(d).length >= 2) || img[0];
+  note(`example ${ex.id}: Question=${String(ex.get('Question')).slice(0, 200)} | urls=${JSON.stringify(urls(ex).map((u) => redact(u).slice(0, 170)))}`);
+  const fails = [];
+  for (const d of img.slice(0, 6)) {
+    for (const u of urls(d).slice(0, 1)) {
+      try { const r = await fetch(u); const b = Buffer.from(await r.arrayBuffer()); fails.push(`${d.id}:${r.status} ${r.headers.get('content-type')} ${b.length}B`); } catch (e) { fails.push(`${d.id}:ERR ${e.message}`); }
     }
   }
-})().catch((e) => { console.log(`::error::${plain(e.message)}`); process.exit(1); });
+  note(`image GET (no login): ${fails.join(' | ')}`);
+  const wrongAnswers = snap.docs.filter((d) => !/^[A-F]$/.test(String(d.get('Answer') || '').trim())).length;
+  note(`Answer not a single letter A-F: ${wrongAnswers}`);
+  out.forEach((m, i) => console.log(`::notice title=SDLE ${i + 1}::${m}`));
+})().catch((e) => { console.log(`::error::${String(e.message).slice(0, 300)}`); process.exit(1); });
