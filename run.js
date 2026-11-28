@@ -61,6 +61,7 @@ function makeSources(env, firestore) {
         sources[key] = new SmleSource(firestore(channel.project || 'smlebrain', channel.keyEnv || 'FIREBASE_SERVICE_ACCOUNT'), {
           month: env.SMLE_MONTH || '',
           imageCount: channel.imageQuestionsPerPost || 0,
+          imagesInBank: Boolean(channel.imagesInBank),
           ...(channel.bankCollection ? { bankCollection: channel.bankCollection } : {}),
           ...(channel.imageCollection ? { imageCollection: channel.imageCollection } : {}),
         });
